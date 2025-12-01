@@ -46,3 +46,5 @@ docker-compose.override.yml
 .coverage
 htmlcov/
 coverage/
+
+.github
