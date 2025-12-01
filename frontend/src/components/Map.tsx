@@ -26,9 +26,10 @@ const getIcon = (impact: string) => {
 
 interface MapProps {
   news: NewsItem[];
+  onMarkerClick: (newsId: number) => void;
 }
 
-const MapComponent: React.FC<MapProps> = ({ news }) => {
+const MapComponent: React.FC<MapProps> = ({ news, onMarkerClick }) => {
   return (
     <MapContainer
       center={[-14.235, -51.9253]}
@@ -45,25 +46,38 @@ const MapComponent: React.FC<MapProps> = ({ news }) => {
             key={item.id}
             position={[item.latitude, item.longitude]}
             icon={getIcon(item.impact_score)}
+            eventHandlers={{
+              click: () => onMarkerClick(item.id),
+            }}
           >
             <Popup>
-              <div className="p-2">
-                <h3 className="font-bold text-sm">{item.title}</h3>
-                <p className="text-xs text-gray-600 mt-1">
+              <div className="p-2 min-w-[200px]">
+                <h3 className="font-bold text-sm mb-2">{item.title}</h3>
+                <p className="text-xs text-gray-600 mb-2">
                   {item.location_name}
                 </p>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full mt-2 inline-block
-                        ${
-                          item.impact_score === "high"
-                            ? "bg-red-100 text-red-800"
-                            : item.impact_score === "medium"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-green-100 text-green-800"
-                        }`}
-                >
-                  {item.impact_score.toUpperCase()}
-                </span>
+                <div className="flex items-center justify-between">
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full
+                          ${
+                            item.impact_score === "high"
+                              ? "bg-red-100 text-red-800"
+                              : item.impact_score === "medium"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-green-100 text-green-800"
+                          }`}
+                  >
+                    {item.impact_score.toUpperCase()}
+                  </span>
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                  >
+                    Ver fonte →
+                  </a>
+                </div>
               </div>
             </Popup>
           </Marker>

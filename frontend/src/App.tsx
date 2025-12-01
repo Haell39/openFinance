@@ -1,19 +1,22 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import MapComponent from "./components/Map";
 import Sidebar from "./components/Sidebar";
-import { NewsItem, NewsCategory, ImpactLevel } from "./types";
+import { NewsItem, NewsCategory, ImpactLevel, Region, getRegion } from "./types";
 import axios from "axios";
 
 function App() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [selectedNewsId, setSelectedNewsId] = useState<number | null>(null);
   const [filters, setFilters] = useState<{
     category: NewsCategory | "all";
     impact: ImpactLevel | "all";
+    region: Region | "all";
   }>({
     category: "all",
     impact: "all",
+    region: "all",
   });
 
   // Fetch news function (reusable for refresh)
@@ -79,6 +82,10 @@ function App() {
           return false;
         if (filters.impact !== "all" && item.impact_score !== filters.impact)
           return false;
+        if (filters.region !== "all") {
+          const itemRegion = getRegion(item.latitude, item.longitude);
+          if (itemRegion !== filters.region) return false;
+        }
         return true;
       })
       .sort((a, b) => {
@@ -87,6 +94,13 @@ function App() {
         return dateB - dateA; // Mais recentes primeiro
       });
   }, [news, filters]);
+
+  // Handle marker click - scroll to news in sidebar
+  const handleMarkerClick = useCallback((newsId: number) => {
+    setSelectedNewsId(newsId);
+    // Auto-clear selection after 3 seconds
+    setTimeout(() => setSelectedNewsId(null), 3000);
+  }, []);
 
   return (
     <div className="flex h-screen w-screen bg-gray-100">
@@ -97,9 +111,10 @@ function App() {
         onRefresh={fetchNews}
         isLoading={isLoading}
         lastUpdate={lastUpdate}
+        selectedNewsId={selectedNewsId}
       />
       <div className="flex-1 relative">
-        <MapComponent news={filteredNews} />
+        <MapComponent news={filteredNews} onMarkerClick={handleMarkerClick} />
       </div>
     </div>
   );

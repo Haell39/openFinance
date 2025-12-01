@@ -1,5 +1,5 @@
-import React from "react";
-import { NewsItem, NewsCategory, ImpactLevel } from "../types";
+import React, { useEffect, useRef } from "react";
+import { NewsItem, NewsCategory, ImpactLevel, Region } from "../types";
 import {
   Clock,
   TrendingUp,
@@ -13,11 +13,13 @@ interface SidebarProps {
   filters: {
     category: NewsCategory | "all";
     impact: ImpactLevel | "all";
+    region: Region | "all";
   };
   onFilterChange: (key: string, value: string) => void;
   onRefresh: () => void;
   isLoading: boolean;
   lastUpdate: Date | null;
+  selectedNewsId: number | null;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -27,7 +29,19 @@ const Sidebar: React.FC<SidebarProps> = ({
   onRefresh,
   isLoading,
   lastUpdate,
+  selectedNewsId,
 }) => {
+  const newsRefs = useRef<Map<number, HTMLAnchorElement>>(new Map());
+
+  // Scroll to selected news when marker is clicked
+  useEffect(() => {
+    if (selectedNewsId !== null) {
+      const element = newsRefs.current.get(selectedNewsId);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [selectedNewsId]);
   return (
     <div className="w-96 h-full bg-white shadow-lg flex flex-col z-[1000] overflow-hidden">
       <div className="p-4 border-b bg-gradient-to-r from-slate-800 to-slate-700 text-white">
@@ -64,31 +78,45 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      <div className="p-3 bg-slate-100 border-b flex gap-2">
-        <div className="flex-1">
-          <select
-            className="w-full text-xs p-2 rounded border bg-white"
-            value={filters.category}
-            onChange={(e) => onFilterChange("category", e.target.value)}
-          >
-            <option value="all">📁 Todas Categorias</option>
-            <option value="financial">💰 Financeiro</option>
-            <option value="political">🏛️ Político</option>
-            <option value="geopolitical">🌍 Geopolítico</option>
-          </select>
+      <div className="p-3 bg-slate-100 border-b space-y-2">
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <select
+              className="w-full text-xs p-2 rounded border bg-white"
+              value={filters.category}
+              onChange={(e) => onFilterChange("category", e.target.value)}
+            >
+              <option value="all">📁 Todas Categorias</option>
+              <option value="financial">💰 Financeiro</option>
+              <option value="political">🏛️ Político</option>
+              <option value="geopolitical">🌍 Geopolítico</option>
+            </select>
+          </div>
+          <div className="flex-1">
+            <select
+              className="w-full text-xs p-2 rounded border bg-white"
+              value={filters.impact}
+              onChange={(e) => onFilterChange("impact", e.target.value)}
+            >
+              <option value="all">⚡ Todos Impactos</option>
+              <option value="high">🔴 Alto Impacto</option>
+              <option value="medium">🟡 Médio Impacto</option>
+              <option value="low">🟢 Baixo Impacto</option>
+            </select>
+          </div>
         </div>
-        <div className="flex-1">
-          <select
-            className="w-full text-xs p-2 rounded border bg-white"
-            value={filters.impact}
-            onChange={(e) => onFilterChange("impact", e.target.value)}
-          >
-            <option value="all">⚡ Todos Impactos</option>
-            <option value="high">🔴 Alto Impacto</option>
-            <option value="medium">🟡 Médio Impacto</option>
-            <option value="low">🟢 Baixo Impacto</option>
-          </select>
-        </div>
+        <select
+          className="w-full text-xs p-2 rounded border bg-white"
+          value={filters.region}
+          onChange={(e) => onFilterChange("region", e.target.value)}
+        >
+          <option value="all">🗺️ Todas Regiões</option>
+          <option value="norte">🌳 Norte</option>
+          <option value="nordeste">☀️ Nordeste</option>
+          <option value="centro-oeste">🌾 Centro-Oeste</option>
+          <option value="sudeste">🏙️ Sudeste</option>
+          <option value="sul">❄️ Sul</option>
+        </select>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
@@ -101,10 +129,17 @@ const Sidebar: React.FC<SidebarProps> = ({
         {news.map((item) => (
           <a
             key={item.id}
+            ref={(el) => {
+              if (el) newsRefs.current.set(item.id, el);
+            }}
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="block border rounded-lg p-3 hover:bg-slate-50 hover:border-blue-300 transition-all cursor-pointer group"
+            className={`block border rounded-lg p-3 hover:bg-slate-50 hover:border-blue-300 transition-all cursor-pointer group ${
+              selectedNewsId === item.id
+                ? "ring-2 ring-blue-500 bg-blue-50 border-blue-400"
+                : ""
+            }`}
           >
             <div className="flex justify-between items-start mb-2">
               <span
