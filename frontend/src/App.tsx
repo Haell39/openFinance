@@ -1,7 +1,13 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import MapComponent from "./components/Map";
 import Sidebar from "./components/Sidebar";
-import { NewsItem, NewsCategory, ImpactLevel, Region, getRegion } from "./types";
+import {
+  NewsItem,
+  NewsCategory,
+  ImpactLevel,
+  Region,
+  getRegion,
+} from "./types";
 import axios from "axios";
 
 function App() {
