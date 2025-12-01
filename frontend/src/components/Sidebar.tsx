@@ -1,6 +1,12 @@
 import React from "react";
 import { NewsItem, NewsCategory, ImpactLevel } from "../types";
-import { Clock, TrendingUp, ExternalLink, MapPin } from "lucide-react";
+import {
+  Clock,
+  TrendingUp,
+  ExternalLink,
+  MapPin,
+  RefreshCw,
+} from "lucide-react";
 
 interface SidebarProps {
   news: NewsItem[];
@@ -9,21 +15,52 @@ interface SidebarProps {
     impact: ImpactLevel | "all";
   };
   onFilterChange: (key: string, value: string) => void;
+  onRefresh: () => void;
+  isLoading: boolean;
+  lastUpdate: Date | null;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ news, filters, onFilterChange }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  news,
+  filters,
+  onFilterChange,
+  onRefresh,
+  isLoading,
+  lastUpdate,
+}) => {
   return (
     <div className="w-96 h-full bg-white shadow-lg flex flex-col z-[1000] overflow-hidden">
       <div className="p-4 border-b bg-gradient-to-r from-slate-800 to-slate-700 text-white">
-        <h1 className="text-xl font-bold flex items-center gap-2">
-          <TrendingUp size={24} />
-          OpenFinance Map
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <TrendingUp size={24} />
+            OpenFinance Map
+          </h1>
+          <button
+            onClick={onRefresh}
+            disabled={isLoading}
+            className="p-2 rounded-lg bg-slate-600 hover:bg-slate-500 transition-colors disabled:opacity-50"
+            title="Atualizar notícias"
+          >
+            <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
+          </button>
+        </div>
         <p className="text-xs text-slate-300 mt-1">
-          📡 Real-time News Intelligence
+          📡 Atualização automática via WebSocket
         </p>
-        <div className="mt-2 text-xs text-emerald-400">
-          {news.length} notícias carregadas
+        <div className="mt-2 flex items-center justify-between">
+          <span className="text-xs text-emerald-400">
+            {news.length} notícias únicas
+          </span>
+          {lastUpdate && (
+            <span className="text-xs text-slate-400">
+              Última:{" "}
+              {lastUpdate.toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          )}
         </div>
       </div>
 

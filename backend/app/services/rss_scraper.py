@@ -6,12 +6,15 @@ import feedparser
 import asyncio
 import aiohttp
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional
 from dataclasses import dataclass
 from bs4 import BeautifulSoup
 import hashlib
 import re
+
+# Fuso horário de Brasília (UTC-3)
+BRAZIL_TZ_OFFSET = timedelta(hours=-3)
 
 logger = logging.getLogger(__name__)
 
@@ -79,14 +82,20 @@ def clean_html(raw_html: str) -> str:
     return soup.get_text(separator=" ", strip=True)[:500]
 
 def parse_date(entry) -> Optional[datetime]:
-    """Parse date from feed entry"""
+    """Parse date from feed entry - convert UTC to Brazil time (UTC-3)"""
     try:
         if hasattr(entry, 'published_parsed') and entry.published_parsed:
-            return datetime(*entry.published_parsed[:6])
+            # RSS feeds typically use UTC, subtract 3 hours for Brazil time
+            utc_time = datetime(*entry.published_parsed[:6])
+            brazil_time = utc_time - timedelta(hours=3)
+            return brazil_time
         if hasattr(entry, 'updated_parsed') and entry.updated_parsed:
-            return datetime(*entry.updated_parsed[:6])
+            utc_time = datetime(*entry.updated_parsed[:6])
+            brazil_time = utc_time - timedelta(hours=3)
+            return brazil_time
     except Exception:
         pass
+    # Return current local time as fallback
     return datetime.now()
 
 def generate_url_hash(url: str) -> str:
