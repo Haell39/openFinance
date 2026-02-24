@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import MapComponent from "./components/Map";
 import Sidebar from "./components/Sidebar";
 import {
@@ -9,6 +9,11 @@ import {
   getRegion,
 } from "./types";
 import axios from "axios";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const WS_URL =
+  import.meta.env.VITE_WS_URL ??
+  `${API_BASE_URL.startsWith("https") ? "wss" : "ws"}://${new URL(API_BASE_URL).host}/ws`;
 
 function App() {
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -25,18 +30,18 @@ function App() {
     region: "all",
   });
 
-  // Fetch news function (reusable for refresh)
   const fetchNews = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await axios.get("http://localhost:8000/api/v1/news");
-      // Deduplicate by URL in frontend as well
-      const uniqueNews = res.data.reduce((acc: NewsItem[], item: NewsItem) => {
-        if (!acc.find((n) => n.url === item.url)) {
-          acc.push(item);
-        }
-        return acc;
-      }, []);
+      const res = await axios.get(`${API_BASE_URL}/api/v1/news`, {
+        timeout: 10000,
+      });
+      const seen = new Set<string>();
+      const uniqueNews = (res.data as NewsItem[]).filter((item) => {
+        if (seen.has(item.url)) return false;
+        seen.add(item.url);
+        return true;
+      });
       setNews(uniqueNews);
       setLastUpdate(new Date());
     } catch (e) {
@@ -46,33 +51,46 @@ function App() {
     }
   }, []);
 
-  // Initial fetch
   useEffect(() => {
     fetchNews();
   }, [fetchNews]);
 
-  // WebSocket connection for real-time updates
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws");
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let alive = true;
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      // Add new item only if not duplicate (by URL)
-      setNews((prev) => {
-        if (prev.find((n) => n.url === data.url)) {
-          return prev; // Skip duplicate
+    const connect = () => {
+      ws = new WebSocket(WS_URL);
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data) as NewsItem;
+        setNews((prev) => {
+          if (prev.find((n) => n.url === data.url)) {
+            return prev;
+          }
+          setLastUpdate(new Date());
+          return [data, ...prev];
+        });
+      };
+
+      ws.onclose = () => {
+        if (alive) {
+          reconnectTimer = setTimeout(connect, 3000);
         }
-        setLastUpdate(new Date());
-        return [data, ...prev];
-      });
+      };
+
+      ws.onerror = () => {
+        ws?.close();
+      };
     };
 
-    ws.onclose = () =>
-      console.log("WS Disconnected - will reconnect on refresh");
-    ws.onerror = () => console.log("WS Error");
+    connect();
 
     return () => {
-      ws.close();
+      alive = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      ws?.close();
     };
   }, []);
 
@@ -80,7 +98,6 @@ function App() {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  // Sort by most recent first and apply filters
   const filteredNews = useMemo(() => {
     return news
       .filter((item) => {
@@ -97,14 +114,12 @@ function App() {
       .sort((a, b) => {
         const dateA = new Date(a.published_at).getTime();
         const dateB = new Date(b.published_at).getTime();
-        return dateB - dateA; // Mais recentes primeiro
+        return dateB - dateA;
       });
   }, [news, filters]);
 
-  // Handle marker click - scroll to news in sidebar
   const handleMarkerClick = useCallback((newsId: number) => {
     setSelectedNewsId(newsId);
-    // Auto-clear selection after 3 seconds
     setTimeout(() => setSelectedNewsId(null), 3000);
   }, []);
 
